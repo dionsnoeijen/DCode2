@@ -1,0 +1,1 @@
+﻿/** * 	GlobalDataContailer *  * 	TODO: This beast should be banned from all usage in DCode2 */package com.data{	public class GlobalDataContainer	{		public static var vars:Object = {};	}}
