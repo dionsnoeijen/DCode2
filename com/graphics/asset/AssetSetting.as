@@ -13,6 +13,8 @@ package com.graphics.asset
 		public static const RNDRECT			:String = 'rndrect';
 		public static const CIRCLE_SEGMENT	:String = 'circle_segment';
 		public static const DONUT			:String = 'donut';
+		public static const POLYGON_SEGMENT :String = 'polygon_segment';
+		public static const POLYGON			:String = 'polygon';
 		
 		// -------------------------
 		// Content resizing leading side

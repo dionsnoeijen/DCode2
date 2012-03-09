@@ -1,3 +1,6 @@
+/**
+ *	Asset Dependancy Object
+ */
 package com.graphics.asset
 {
 	import com.graphics.asset.AssetSetting;
@@ -14,6 +17,7 @@ package com.graphics.asset
 		public var borderColor			:uint;
 		public var customShapeSettings 	:Array;
 		public var image				:String;
+		public var sound				:String;
 		public var autoHeight			:Boolean;
 		
 		public function AssetInitializer()
@@ -33,6 +37,7 @@ package com.graphics.asset
 			this.borderColor = 0;
 			this.customShapeSettings = null;
 			this.image = '';
+			this.sound = '';
 			this.autoHeight = false;
 		}
 	}

@@ -1,6 +1,7 @@
 package com.controls
 {
 	import com.events.AssetEvent;
+	import com.events.ControlsEvent;
 	import com.graphics.asset.*;
 	import com.greensock.TweenMax;
 	import com.tools.FindClosest;
@@ -21,15 +22,17 @@ package com.controls
 		
 		private var bgComplete		:Boolean;
 		private var fgComplete		:Boolean;
+		private var _centerY		:Boolean;
+		
 		public var debugging		:Boolean = false;
 		
-		public static const CHANGE:String = 'change';
 		public static const IMAGES_LOADED:String = 'images_loaded';
 		
 		public function HorizontalSlider(bgPath:String = null,
 										 fgPath:String = null,
 										 bgBitmap:Bitmap = null,
 										 fgBitmap:Bitmap = null,
+										 centerY:Boolean = true,
 										 bgAlpha:Number = 0,
 										 fgAlpha:Number = 0,
 										 bgWidth:Number = 10, 
@@ -62,6 +65,8 @@ package com.controls
 			this.ai.alpha = fgAlpha;
 			this.fg = new Asset(this.ai);
 			this.fg.makeButton();
+			
+			this._centerY = centerY;
 			
 			if(bgPath)
 			{
@@ -128,16 +133,24 @@ package com.controls
 			if(this.debugging)
 				trace('starting build');
 			
-			this.addChild(this.bg);			
+			this.addChild(this.bg);		
+			this.bg.addEventListener(MouseEvent.CLICK, this.bgClick);
 			this.maxX = (this.bg.visibleWidth - this.fg.visibleWidth) - (padding * 2);
-			this.fg.addEventListener(MouseEvent.MOUSE_DOWN, fgDown);
+			this.fg.addEventListener(MouseEvent.MOUSE_DOWN, this.fgDown);
 			this.fg.x = this.fg.y = this.padding;
+			if(this._centerY)
+				this.fg.y = -(this.fg.visibleHeight / 2);
 			this.addChild(this.fg);
 			
 			this.dispatchEvent(new Event(HorizontalSlider.IMAGES_LOADED));
 			
 			if(this.debugging)
 				trace('bg width:', this.bg.visibleWidth, 'maxX:', this.maxX);
+		}
+		
+		private function bgClick(e:MouseEvent):void
+		{
+			this.dispatchEvent(new Event(ControlsEvent.HORIZONTAL_SLIDER_CLICK));	
 		}
 		
 		private var startX:Number;
@@ -161,13 +174,21 @@ package com.controls
 				this.fg.x = this.maxX;
 			}
 			
-			this.dispatchEvent(new Event(CHANGE));
+			if(this._centerY)
+				this.fg.y = -(this.fg.visibleHeight / 2);
+			
+			this.dispatchEvent(new Event(ControlsEvent.HORIZONTAL_SLIDER_CHANGE));
 		}
 		
 		private function stageUp(e:MouseEvent):void
 		{
 			this.stage.removeEventListener(MouseEvent.MOUSE_MOVE, stageMove);
 			this.stage.removeEventListener(MouseEvent.MOUSE_UP, stageUp);
+		}
+		
+		public function get clickPosition():Number
+		{
+			return Number(this.mouseX - this.startX) / 100;
 		}
 		
 		public function set position(percentage:Number):void
@@ -188,7 +209,6 @@ package com.controls
 		public function get position():Number
 		{
 			_position = (100 / (this.maxX - this.padding)) * (this.fg.x - this.padding);
-			
 			return _position;
 		}
 	}

@@ -28,6 +28,8 @@ package com.graphics.asset
 	import flash.events.ProgressEvent;
 	import flash.events.TimerEvent;
 	import flash.media.Sound;
+	import flash.media.SoundChannel;
+	import flash.media.SoundTransform;
 	import flash.media.Video;
 	import flash.net.NetConnection;
 	import flash.net.NetStream;
@@ -49,8 +51,19 @@ package com.graphics.asset
 	 * Asset class
 	 * 
 	 * @author					Dion Snoeijen
-	 * @version					2.0
+	 * @version					2.1
 	 * @playerversion			10
+	 * 
+	 * Core graphics object for the DCode framework
+	 * 
+	 * Changes:
+	 * 12-10-2011 : Added masking for movies 
+	 * 12-10-2011 : videoSendPos dispatch event changed to AssetEvent.MOV_PROGRESS and made it a bubbling event
+	 * 14-10-2011 : Added sound functionality
+	 * 14-10-2011 : Extended movie functionality
+	 * 17-10-2011 : Sound Playing public var. Change to getter and setter, for movie aswell...
+	 * 26-10-2011 : Added AssetEvent.SOUND_END
+	 * 02-03-2012 : Fixed masking for rectangles
 	 */
 	public class Asset extends DynamicCenter
 	{	
@@ -61,7 +74,7 @@ package com.graphics.asset
 		
 		private var shape						  :String;
 		private var o							  :Object;
-		private var assetMask					  :Sprite;
+		private var _assetMask					  :Sprite;
 		
 		private var initialColor				  :uint;
 		private var hoverColor					  :uint;
@@ -84,6 +97,11 @@ package com.graphics.asset
 		public var img							  :Sprite;
 		
 		// ------------------------------
+		//	Create easy ref for Bitmap
+		// ------------------------------
+		public var _bmp 						  :Bitmap;
+		
+		// ------------------------------
 		//	Create easy ref for CONTENT
 		// ------------------------------
 		private var _content					  :MovieClip;
@@ -102,6 +120,13 @@ package com.graphics.asset
 		private var movTimer					  :Timer;
 		public var movTotalTime				  	  :Number;
 		public var movSendTimePercentage		  :Number;
+		
+		// ------------------------------
+		//	Sound
+		// ------------------------------
+		private var _sound						  :Sound;
+		private var _soundChannel				  :SoundChannel;
+		private var _soundTransform				  :SoundTransform;
 		
 		private var autoHeight					  :Boolean;
 		
@@ -129,7 +154,8 @@ package com.graphics.asset
 					  a:ai.alpha, 
 					  bt:ai.borderThickness, 
 					  bc:ai.borderColor, 
-					  custom:ai.customShapeSettings};
+					  custom:ai.customShapeSettings, 
+					  mask:ai.mask};
 			this.initialColor = ai.color;
 			
 			this.shape = ai.shape;			
@@ -142,6 +168,9 @@ package com.graphics.asset
 			
 			if(ai.image != '')
 				this.setImage(ai.image, AssetSetting.AUTO_LEADING);
+			
+			if(ai.sound != '')
+				this.setSound(ai.sound);
 			
 			this.autoHeight = ai.autoHeight;
 		}
@@ -162,9 +191,9 @@ package com.graphics.asset
 		
 		public function setMask():void
 		{
-			this.assetMask = new Sprite();
-			this.drawShape(this.assetMask);			
-			this.addChild(this.assetMask);
+			this._assetMask = new Sprite();
+			this.drawShape(this._assetMask);	
+			this.addChild(this._assetMask);
 		}
 		
 		private var resize:String;
@@ -190,9 +219,9 @@ package com.graphics.asset
 			this.img.addChild(getBM);
 			this.addChild(this.img);
 			
-			if(this.assetMask)
+			if(this._assetMask) 
 			{
-				this.img.mask = this.assetMask;
+				this.img.mask = this._assetMask;
 			}
 			
 			if(debugging)
@@ -246,8 +275,24 @@ package com.graphics.asset
 		
 		public function setBitmap(b:Bitmap):void
 		{
-			this.addChild(b);
+			this._bmp = b;
+			this.addChild(this._bmp);
 			this.resizeAsset(b.width, b.height);
+			
+			if(this._assetMask)
+			{
+				this._bmp.mask = this._assetMask;
+			}
+		}
+		
+		public function get bitmap():Bitmap
+		{
+			return this._bmp;
+		}
+		
+		public function get assetMask():Sprite
+		{
+			return this._assetMask;
 		}
 		
 		private function drawFill(s:Array):void
@@ -268,7 +313,10 @@ package com.graphics.asset
 			}
 			if(this.resize == AssetSetting.AUTO_LEADING)
 			{	
-				this.resizeAsset(this.width, this.height);
+				if(!this.o.mask) 
+				{
+					this.resizeAsset(this.width, this.height);
+				}
 			}
 			else if(this.resize == AssetSetting.WIDTH_LEADING)
 			{
@@ -482,6 +530,139 @@ package com.graphics.asset
 			this.updateShapeSize(this.content.width + (this.contentMargin * 2), this.content.height + (this.contentMargin * 2));
 		}
 		
+		/**
+		 * 	<p><strong>setSound()</strong></p>
+		 * 	<p>Sound effect system</p>
+		 */
+		private var soundTimer:Timer;
+		public function setSound(path:String, embeddedSound:Class = null):void
+		{
+			if(embeddedSound == null)
+			{
+				this._sound = new Sound();
+				this._sound.load(new URLRequest(path));
+				this._sound.addEventListener(Event.COMPLETE, this.soundComplete);
+			}
+			else
+			{
+				this._sound = new embeddedSound();
+			}
+		}
+		
+		public var soundSendTimePercentage:Number;
+		private function soundPosPercentage(e:TimerEvent):void
+		{
+			this.soundSendTimePercentage = this._soundChannel.position / (this._sound.length / 100);
+			dispatchEvent(new Event(AssetEvent.SOUND_PROGRESS, true));
+			if(Math.round(this._soundChannel.position) == Math.round(this._sound.length))
+			{
+				this.dispatchEvent(new Event(AssetEvent.SOUND_END, true));
+			}
+		}
+		
+		private function soundComplete(e:Event):void
+		{
+			this.dispatchEvent(new Event(AssetEvent.SOUND_COMPLETE));
+		}
+		
+		public function get sound():Sound
+		{
+			return this._sound;
+		}
+		
+		public var soundPlaying:Boolean = false;
+		public function soundPlay(startpos:int = 0):void
+		{
+			this._soundTransform = new SoundTransform();
+			this._soundChannel = new SoundChannel();
+			this._soundChannel.soundTransform = this._soundTransform;
+
+			if(startpos > 0)
+			{
+				this._soundChannel = this._sound.play(startpos);
+			}
+			else if(this.soundLastPosition > 0)
+			{
+				this._soundChannel = this._sound.play(this.soundLastPosition);
+			}
+			else
+			{
+				this._soundChannel = this._sound.play();
+			}
+
+			if(this.soundTimer)
+				this.soundTimer.stop();
+			
+			this.soundTimer = new Timer(50);
+			this.soundTimer.addEventListener(TimerEvent.TIMER, this.soundPosPercentage);
+			this.soundTimer.start();
+			
+			this.soundPlaying = true;
+		}
+		
+		private var soundLastPosition:Number;
+		public function soundPause():void
+		{
+			this.soundLastPosition = this._soundChannel.position;
+			this._soundChannel.stop();
+			this.soundTimer.stop();
+			
+			this.soundPlaying = false;
+		}
+		
+		public function soundStop():void
+		{
+			this.soundLastPosition = 0;
+			this._soundChannel.stop();
+			this.soundTimer.stop();
+			
+			this.soundPlaying = false;
+		}
+		
+		public function set volume(vol:Number):void
+		{
+			this._soundTransform.volume = vol;
+			this._soundChannel.soundTransform = this._soundTransform;
+		}
+		
+		public function get volume():Number
+		{
+			return this._soundTransform.volume;
+		}
+		
+		public function get soundPos():Number
+		{
+			return this._soundChannel.position;
+		}
+		
+		public function get soundCurrentTime():String
+		{
+			return String(Math.floor(this._soundChannel.position / 1000 / 60)) + '.' + String(Math.floor(this._soundChannel.position / 1000) % 60);  
+		}
+		
+		public function get soundCurrentTimeMillisec():int
+		{
+			return this._soundChannel.position;	
+		}
+		
+		public function get soundTotalTime():String
+		{
+			return String(Math.floor(this._sound.length / 1000 / 60)) + '.' + String(Math.floor(this._sound.length / 1000) % 60);
+		}
+		
+		public function get soundTotalTimeMillisec():int
+		{
+			return this._sound.length;
+		}
+		
+		public function soundSearch(pos:Number):void
+		{	
+			var totalTimePercentage:Number = this._sound.length / 100;
+			var seekPos:Number = pos * totalTimePercentage;
+			this.soundStop();
+			this.soundPlay(seekPos);
+		}
+		
 		private var movComplete:Boolean;
 		private var nsInterval:Number;
 		/**
@@ -510,11 +691,14 @@ package com.graphics.asset
 			this.movContainer.addChild(vid);
 			this.addChild(movContainer);
 			
+			if(this._assetMask)
+				this.movContainer.mask = this._assetMask;
+			
 			this.mov = true;
 			this.movLeading = leading;
 			
 			this.movTimer = new Timer(50);
-			this.movTimer.addEventListener(TimerEvent.TIMER, videoSendPos);
+			this.movTimer.addEventListener(TimerEvent.TIMER, this.videoSendPos);
 			
 			// -------------------------
 			//	Initialize net stream
@@ -523,7 +707,7 @@ package com.graphics.asset
 			this.nc.connect(null);
 			this.ns = new NetStream(nc);
 			
-			this.ns.addEventListener(NetStatusEvent.NET_STATUS, onNetStatus);
+			this.ns.addEventListener(NetStatusEvent.NET_STATUS, this.onNetStatus);
 			this.ns.bufferTime = 3;
 			
 			this.vid.smoothing = true;
@@ -538,11 +722,7 @@ package com.graphics.asset
 			
 			if(leading == AssetSetting.AUTO_LEADING)
 			{
-				if(this.debugging)
-					trace('setVideo AUTO_LEADING', this.vid.width, this.vid.x, this.vid.scaleX);
-				
-				if(this.debugging)
-					trace('setVideo AUTO_LEADING', this.vid.height, this.vid.y, this.vid.scaleY);
+				//this.resizeAsset(this.width, this.height);
 			}
 			else if(leading == AssetSetting.WIDTH_LEADING)
 			{
@@ -553,12 +733,12 @@ package com.graphics.asset
 				trace(AssetSetting.HEIGHT_LEADING);
 			}
 			
-			this.nsInterval = setInterval(nsProgress, 500);
+			this.nsInterval = setInterval(this.nsProgress, 500);
 			
 			this.ns.pause();
 			
 			if(this.debugging)
-				trace('setVideo.bufferLength:', this.ns.bufferLength, 'setVideo.bufferTime:', this.ns.bufferTime, 'setVideo.bytesTotal:', this.ns.bytesTotal, 'setVideo.bytesLoaded:', this.ns.bytesLoaded);
+				trace('setVideo.bufferLength:', this.ns.bufferLength, 'bufferTime:', this.ns.bufferTime, 'bytesTotal:', this.ns.bytesTotal, 'bytesLoaded:', this.ns.bytesLoaded);
 		}
 		
 		private function onCuePointHandler(cueInfoObj:Object):void 
@@ -572,7 +752,9 @@ package com.graphics.asset
 			// -------------------------
 			if(this.debugging)
 				trace(event.info.code);
-			switch (event.info.code) {
+			
+			switch (event.info.code) 
+			{
 				case "NetConnection.Connect.Success":
 					// -------------------------
 					//	play stream if connection successful
@@ -590,7 +772,8 @@ package com.graphics.asset
 					// -------------------------
 					//	preloading done
 					// -------------------------
-					//this.dispatchEvent(new Event(AssetEvent.MOV_PRELOADED));
+					trace('this.ns.bytesLoaded', this.ns.bytesLoaded);
+					this.dispatchEvent(new Event(AssetEvent.MOV_PRELOADED));
 					break;
 				case "NetStream.Seek.Notify":
 					// -------------------------
@@ -613,7 +796,8 @@ package com.graphics.asset
 			//handles onPlayStatus complete event if available
 			trace('PLAY STATUS EVENT', event.info.code);
 			
-			switch (event.code) {
+			switch (event.code) 
+			{
 				case "NetStream.Play.Complete":
 					//do if video play completes
 					this.dispatchEvent(new Event(AssetEvent.MOV_END));
@@ -632,9 +816,6 @@ package com.graphics.asset
 			
 			if(!movComplete)
 			{
-				//this.videoPlay();
-				//this.videoSearch(1);
-				//this.videoPause();
 				dispatchEvent(new Event(AssetEvent.MOV_COMPLETE));
 			}
 			
@@ -647,17 +828,18 @@ package com.graphics.asset
 		{
 			this._totalLoadedPercentage = Math.round((this.ns.bytesLoaded / this.ns.bytesTotal) * 100);
 			
-			var bufferBytesTotal:Number = (this.ns.bytesTotal / this.movTotalTime) * this.ns.bufferLength;
-			
-			//trace('BUFFER BYTES TOTAL:', bufferBytesTotal, 'MOVIE TOTAL BYTES:', this.ns.bytesTotal, 'MOVIE TOTAL TIME:', this.movTotalTime);
-			this._bufferLoadedPercentage = (this.ns.bytesLoaded / bufferBytesTotal) / 100;
+			if(this.debugging)
+				trace('nsProgress buffer loaded percentage:', this._totalLoadedPercentage, this.ns.bytesLoaded, this.ns.bytesTotal);
 			
 			if(_totalLoadedPercentage >= 100)
 			{
 				clearInterval(this.nsInterval);
+				this.dispatchEvent(new Event(AssetEvent.MOV_BUFFERING_COMPLETE));
+				if(this.debugging)
+					trace('DONE BUFFERING CLEAR INTERVAL');
 			}
 			
-			this.dispatchEvent(new Event(AssetEvent.MOV_PROGRESS));
+			this.dispatchEvent(new Event(AssetEvent.MOV_BUFFERING));
 		}
 		
 		public function get totalLoadedPercentage():Number
@@ -715,7 +897,33 @@ package com.graphics.asset
 		{
 			this.movSendTimePercentage = this.ns.time / (this.movTotalTime / 100);
 			
-			dispatchEvent(new ProgressEvent(ProgressEvent.PROGRESS));
+			dispatchEvent(new Event(AssetEvent.MOV_PROGRESS, true));
+		}
+		
+		public function get movTotalTimeString():String
+		{
+			var ns_seconds:Number = this.movTotalTime;
+			var minutes:Number = Math.floor(ns_seconds/60);
+			var seconds:Number = Math.floor(ns_seconds%60);
+			var reseconds:String = String(seconds);
+			if (seconds < 10) 
+			{
+				reseconds = "0" + String(seconds);
+			}
+			return String(minutes) + '.' + reseconds;
+		}
+		
+		public function get movCurrentTime():String
+		{
+			var ns_seconds:Number = this.ns.time;
+			var minutes:Number = Math.floor(ns_seconds/60);
+			var seconds:Number = Math.floor(ns_seconds%60);
+			var reseconds:String = String(seconds);
+			if (seconds < 10) 
+			{
+				reseconds = "0" + String(seconds);
+			}
+			return String(minutes) + '.' + reseconds;
 		}
 		
 		public function get content():MovieClip
@@ -916,20 +1124,36 @@ package com.graphics.asset
 		}
 		
 		/**
-		 * 	Provide easy reference to loaded .swf MC
+		 * 	Provide easy reference to loaded .swf or inserted MC
 		 */
 		public function get mc():MovieClip
 		{
 			var _mc:MovieClip;
-			if(GetSwf(refMc.getChildAt(0)).mc)
+			
+			try
 			{
-				_mc = GetSwf(refMc.getChildAt(0)).mc;
+				if(GetSwf(refMc.getChildAt(0)))
+				{
+					_mc = GetSwf(refMc.getChildAt(0)).mc;
+				}
+				else
+				{
+					_mc = refMc;
+				}
 			}
-			else
+			catch(error:Error)
 			{
 				_mc = refMc;
 			}
 			return _mc; 
+		}
+		
+		public function setMc(mc:MovieClip):void
+		{
+			this.refMc = mc;
+			
+			this.addChild(this.refMc);
+			this.resizeAsset(mc.width, mc.height);
 		}
 		
 		private var hoverImageLoader:Loader;
@@ -941,10 +1165,10 @@ package com.graphics.asset
 			this.buttonMode = true;
 			this.addEventListener(MouseEvent.MOUSE_OVER, buttonMouseOver);
 			
-			if(this.assetMask)
+			if(this._assetMask)
 			{
-				this.hitArea = this.assetMask;
-				this.assetMask.buttonMode = true;
+				this.hitArea = this._assetMask;
+				this._assetMask.buttonMode = true;
 			}
 			this.mouseChildren = false;
 			if(tf)
@@ -1044,16 +1268,19 @@ package com.graphics.asset
 			// ------------------------------
 			switch(this.shape)
 			{
-				case AssetSetting.RECT: DynamicShape.rectangle(sprite, this.o); break;
-				case AssetSetting.CIRC: DynamicShape.circle(sprite, this.o); break;
-				case AssetSetting.TRI: DynamicShape.triangle(sprite, this.o); break;
-				case AssetSetting.ARROW: DynamicShape.arrow(sprite, this.o); break;
-				case AssetSetting.PAUSE: DynamicShape.pause(sprite, this.o); break;
-				case AssetSetting.RNDRECT: DynamicShape.rndRect(sprite, this.o); break;
-				case AssetSetting.CIRCLE_SEGMENT: DynamicShape.circleSegment(sprite, this.o); break;
-				case AssetSetting.DONUT: DynamicShape.donut(sprite, this.o); break;
+				case	AssetSetting.RECT			:	DynamicShape.rectangle		(sprite, this.o); 	break;
+				case	AssetSetting.CIRC			:	DynamicShape.circle			(sprite, this.o); 	break;
+				case	AssetSetting.TRI			:	DynamicShape.triangle		(sprite, this.o); 	break;
+				case	AssetSetting.ARROW			:	DynamicShape.arrow			(sprite, this.o); 	break;
+				case	AssetSetting.PAUSE			:	DynamicShape.pause			(sprite, this.o); 	break;
+				case	AssetSetting.RNDRECT		:	DynamicShape.rndRect		(sprite, this.o); 	break;
+				case	AssetSetting.CIRCLE_SEGMENT	:	DynamicShape.circleSegment	(sprite, this.o);	break;
+				case	AssetSetting.DONUT			:	DynamicShape.donut			(sprite, this.o); 	break;
+				case	AssetSetting.POLYGON_SEGMENT:	DynamicShape.polygonSegment	(sprite, this.o); 	break;
+				case 	AssetSetting.POLYGON		: 	DynamicShape.polygon		(sprite, this.o);	break;
 				default: throw new Error('Class: Asset  |  Method: createShape  |  ERROR: No shape');
-			}	
+			}
+			this.alpha = this.o.a;
 		}
 		
 		public function textFormat(change:Object):void
@@ -1064,12 +1291,12 @@ package com.graphics.asset
 		
 		public function get visibleHeight():Number
 		{
-			return this.assetMask ? this.assetMask.height : this.height;
+			return this._assetMask ? this._assetMask.height : this.height;
 		}
 		
 		public function get visibleWidth():Number
 		{
-			return this.assetMask ? this.assetMask.width : this.width;
+			return this._assetMask ? this._assetMask.width : this.width;
 		}
 		
 		public function updateShapeColor(newColor:uint, newAlpha:Number = 1):void
@@ -1096,8 +1323,8 @@ package com.graphics.asset
 			if(custom)
 				this.o.custom = custom;
 			
-			if(this.assetMask)
-				this.drawShape(this.assetMask);
+			if(this._assetMask)
+				this.drawShape(this._assetMask);
 			
 			if(this.bg)
 				this.setBackground();
@@ -1157,6 +1384,17 @@ package com.graphics.asset
 		public function get newCustom1():Number
 		{
 			return Number(this.o.custom[1]);
+		}
+		
+		public function set newCustom2(newC2:Number):void
+		{
+			this.o.custom[2] = newC2;
+			this.updateShapeSize(NaN, NaN, this.o.custom);
+		}
+		
+		public function get newCustom2():Number
+		{
+			return Number(this.o.custom[2]);
 		}
 		
 		/**

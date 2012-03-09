@@ -23,7 +23,7 @@ package com.core
 			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);
 			}
-			g.graphics.beginFill(o.c, o.a);
+			g.graphics.beginFill(o.c, 1);
 			g.graphics.drawRect(0, 0, o.w, o.h);
 			g.graphics.endFill();
 			
@@ -40,7 +40,7 @@ package com.core
 			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);
 			}
-			g.graphics.beginFill(o.c, o.a);
+			g.graphics.beginFill(o.c, 1);
 			g.graphics.drawEllipse(0, 0, o.w, o.h);
 			g.graphics.endFill();
 			
@@ -57,8 +57,8 @@ package com.core
 			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);
 			}
-			g.graphics.beginFill(o.c, o.a);
-			g.graphics.drawRoundRect(0, 0, o.w, o.h, 10, 10);
+			g.graphics.beginFill(o.c, 1);
+			g.graphics.drawRoundRect(0, 0, o.w, o.h, o.custom, o.custom);
 			g.graphics.endFill();
 			
 			return g;
@@ -74,7 +74,7 @@ package com.core
 			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);
 			}
-			g.graphics.beginFill(o.c, o.a);
+			g.graphics.beginFill(o.c, 1);
 			if(o.custom == null || o.custom == 'v1')
 			{
 				g.graphics.moveTo(o.w, 0);
@@ -111,8 +111,13 @@ package com.core
 			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);
 			}
-			g.graphics.beginFill(o.c, o.a);
+			g.graphics.beginFill(o.c, 1);
 			g.graphics.drawCircle(0, 0, (o.w / 2));
+			if(o.custom == null) {
+				// ERROR
+				trace("Warning: DynamicShape:donut,  Don't forget custom parameter 0.");
+				o.custom = [10];
+			}
 			g.graphics.drawCircle(0, 0, ((o.w / 2) - o.custom[0])); 
 			g.graphics.endFill();
 			
@@ -126,8 +131,8 @@ package com.core
 			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);	
 			}
-			g.graphics.beginFill(o.c, o.a);
-			if(o.custom == null)//Draw V1
+			g.graphics.beginFill(o.c, 1);
+			if(o.custom == null) //Draw V1
 			{
 				g.graphics.moveTo(0, (o.h / 4));
 				g.graphics.lineTo(((o.w / 3) * 2), o.h / 4);
@@ -194,7 +199,7 @@ package com.core
 			// -------------------------
 			//	Draw the segment
 			// -------------------------
-			g.graphics.beginFill(o.c, o.a);
+			g.graphics.beginFill(o.c, 1);
 			g.graphics.moveTo(0, 0);
 			for (var theta:Number = start; theta < end; theta += Math.min(step, end - theta)) {
 				g.graphics.lineTo(0 + r * Math.cos(theta), 0 + r * Math.sin(theta));
@@ -212,51 +217,82 @@ package com.core
 		public static function pause(g:Sprite, o:Object):Sprite
 		{
 			g.graphics.clear();
+			
 			if(o.bt > 0)
-			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);
-			}
-			g.graphics.beginFill(o.c, o.a);
+			
+			g.graphics.beginFill(o.c, 0);
+			g.graphics.drawRect(0, 0, o.w, o.h);
+			g.graphics.endFill();
+			g.graphics.beginFill(o.c, 1);
 			g.graphics.drawRect(0, 0, o.w / 3, o.h);
 			g.graphics.drawRect((o.w / 3) * 2, 0, (o.w / 3), o.h);
 			g.graphics.endFill();
+			
 			return g;
 		}
 		
 		/**
-		 *	<p><strong>Draw polygon</strong></p>
+		 *	<p><strong>Draw segmented polygon</strong></p>
 		 */
-		/*
-		public static function polygon(g:Sprite, o:Object):Sprite
+		public static function polygonSegment(g:Sprite, o:Object):Sprite
 		{
-			var radius:Number = o.w / 2;
+			g.graphics.clear();
+			if(o.bt > 0)
+				g.graphics.lineStyle(o.bt, o.bc, 1, true);
 			
-			var id:int = 0;
-			var points:Array = new Array();
-			var ratio:Number = 360 / o.custom;
-			var top:Number = (o.h / 2) - radius;
+			var r:Number = (o.w / 2);
+			var start:Number = o.custom[0] == null ? 0 : o.custom[0]; 
+			var end:Number = o.custom[1] == null ? 90 : o.custom[1];
+			var step:Number = o.custom[2] == null ? 1 : (360 / o.custom[2]);
 			
-			for(var i:int = rotating ; i <= 360 + rotating ; i += ratio)
-			{
-				var radians:Number = Math.PI / 180 * i;
-				var xx:Number= centerX + Math.sin(radians) * radius;
-				var yy:Number= top + (radius - Math.cos(radians) * radius);
-				
-				points[id] = new Array(xx, yy);
-				
-				if(id>=1) 
-				{
-					g.graphics.lineStyle(line,tint,1);
-					g.graphics.moveTo(points[id-1][0],points[id-1][1]);
-					g.graphics.lineTo(points[id][0],points[id][1]);
-				}
-				
-				id++;
+			// -------------------------
+			//	More efficient to work in radians
+			// -------------------------
+			var degreesPerRadian:Number = Math.PI / 180;
+			start *= degreesPerRadian;
+			end *= degreesPerRadian;
+			step *= degreesPerRadian;
+			
+			// -------------------------
+			//	Draw the segment
+			// -------------------------
+			g.graphics.beginFill(o.c, 1);
+			g.graphics.moveTo(0, 0);
+			for (var theta:Number = start; theta < end; theta += Math.min(step, end - theta)) {
+				g.graphics.lineTo(0 + r * Math.cos(theta), 0 + r * Math.sin(theta));
 			}
-			id=0;
+			g.graphics.lineTo(0 + r * Math.cos(end), 0 + r * Math.sin(end));
+			g.graphics.lineTo(0, 0);
+			g.graphics.endFill();
 			
 			return g;
 		}
-		*/
+		
+		/**
+		 * 	<p><strong>Draw polygon</strong></p>
+		 */
+		public static function polygon(g:Sprite, o:Object):Sprite
+		{
+			g.graphics.clear();
+			if(o.bt > 0)
+				g.graphics.lineStyle(o.bt, o.bc, 1, true);
+			
+			var r:Number = (o.w / 2);
+			var corner:int = o.custom[0] == null ? 6 : o.custom[0];
+			
+			g.graphics.beginFill(o.c, 1);  
+			g.graphics.moveTo(r, 0);
+			
+			for(var i:int = 0; i < corner; i++){  
+				var angle:Number = 2 *  Math.PI/ corner * (i + 1);  
+				var lineX:Number = Math.cos(angle) * r;  
+				var lineY:Number = - Math.sin(angle) * r;  
+				g.graphics.lineTo(lineX, lineY);  
+			}  
+			g.graphics.endFill();  
+			
+			return g;
+		}
 	}
 } 

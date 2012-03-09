@@ -27,7 +27,6 @@ package com.controls
 			
 			this.scrubber = new Asset(this.ai);
 			this.scrubber.makeButton();
-			
 			this.scrubber.x = (this.barProgress.visibleWidth - (this.scrubber.visibleWidth / 2));
 			this.addChild(this.scrubber);
 			

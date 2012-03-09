@@ -14,7 +14,10 @@ package com.controls
 		
 		private var _progressPercentage	:Number;
 		
-		public function CircularProgressBar(radius:Number = 100, bgColor:uint = 0xCCCCCC, fgColor:uint = 0x626262, thickness:Number = 10):void
+		public function CircularProgressBar(radius:Number = 100, 
+											bgColor:uint = 0xCCCCCC, 
+											fgColor:uint = 0x626262, 
+											thickness:Number = 10):void
 		{
 			// -------------------------
 			//	Start the circle segment at the top -90
