@@ -12,6 +12,7 @@ package com.graphics.asset
 		public var height				:Number;
 		public var color				:uint;
 		public var alpha				:Number;
+		public var vectorAlpha			:Number;
 		public var mask					:Boolean;
 		public var borderThickness		:Number;
 		public var borderColor			:uint;
@@ -31,7 +32,8 @@ package com.graphics.asset
 			this.width = 10;
 			this.height = 10;
 			this.color = 0x000000;
-			this.alpha = 0;
+			this.alpha = 1;
+			this.vectorAlpha = 0;
 			this.mask = false;
 			this.borderThickness = 0;
 			this.borderColor = 0;

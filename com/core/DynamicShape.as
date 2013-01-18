@@ -23,7 +23,7 @@ package com.core
 			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);
 			}
-			g.graphics.beginFill(o.c, 1);
+			g.graphics.beginFill(o.c, o.va);
 			g.graphics.drawRect(0, 0, o.w, o.h);
 			g.graphics.endFill();
 			
@@ -40,7 +40,7 @@ package com.core
 			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);
 			}
-			g.graphics.beginFill(o.c, 1);
+			g.graphics.beginFill(o.c, o.va);
 			g.graphics.drawEllipse(0, 0, o.w, o.h);
 			g.graphics.endFill();
 			
@@ -57,7 +57,7 @@ package com.core
 			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);
 			}
-			g.graphics.beginFill(o.c, 1);
+			g.graphics.beginFill(o.c, o.va);
 			g.graphics.drawRoundRect(0, 0, o.w, o.h, o.custom, o.custom);
 			g.graphics.endFill();
 			
@@ -74,7 +74,7 @@ package com.core
 			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);
 			}
-			g.graphics.beginFill(o.c, 1);
+			g.graphics.beginFill(o.c, o.va);
 			if(o.custom == null || o.custom == 'v1')
 			{
 				g.graphics.moveTo(o.w, 0);
@@ -111,7 +111,7 @@ package com.core
 			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);
 			}
-			g.graphics.beginFill(o.c, 1);
+			g.graphics.beginFill(o.c, o.va);
 			g.graphics.drawCircle(0, 0, (o.w / 2));
 			if(o.custom == null) {
 				// ERROR
@@ -131,7 +131,7 @@ package com.core
 			{
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);	
 			}
-			g.graphics.beginFill(o.c, 1);
+			g.graphics.beginFill(o.c, o.va);
 			if(o.custom == null) //Draw V1
 			{
 				g.graphics.moveTo(0, (o.h / 4));
@@ -199,7 +199,7 @@ package com.core
 			// -------------------------
 			//	Draw the segment
 			// -------------------------
-			g.graphics.beginFill(o.c, 1);
+			g.graphics.beginFill(o.c, o.va);
 			g.graphics.moveTo(0, 0);
 			for (var theta:Number = start; theta < end; theta += Math.min(step, end - theta)) {
 				g.graphics.lineTo(0 + r * Math.cos(theta), 0 + r * Math.sin(theta));
@@ -221,10 +221,10 @@ package com.core
 			if(o.bt > 0)
 				g.graphics.lineStyle(o.bt, o.bc, 1, true);
 			
-			g.graphics.beginFill(o.c, 0);
+			g.graphics.beginFill(o.c, o.va);
 			g.graphics.drawRect(0, 0, o.w, o.h);
 			g.graphics.endFill();
-			g.graphics.beginFill(o.c, 1);
+			g.graphics.beginFill(o.c, o.va);
 			g.graphics.drawRect(0, 0, o.w / 3, o.h);
 			g.graphics.drawRect((o.w / 3) * 2, 0, (o.w / 3), o.h);
 			g.graphics.endFill();
@@ -257,7 +257,7 @@ package com.core
 			// -------------------------
 			//	Draw the segment
 			// -------------------------
-			g.graphics.beginFill(o.c, 1);
+			g.graphics.beginFill(o.c, o.va);
 			g.graphics.moveTo(0, 0);
 			for (var theta:Number = start; theta < end; theta += Math.min(step, end - theta)) {
 				g.graphics.lineTo(0 + r * Math.cos(theta), 0 + r * Math.sin(theta));
@@ -281,7 +281,7 @@ package com.core
 			var r:Number = (o.w / 2);
 			var corner:int = o.custom[0] == null ? 6 : o.custom[0];
 			
-			g.graphics.beginFill(o.c, 1);  
+			g.graphics.beginFill(o.c, o.va);  
 			g.graphics.moveTo(r, 0);
 			
 			for(var i:int = 0; i < corner; i++){  

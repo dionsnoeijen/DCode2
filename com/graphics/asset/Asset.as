@@ -151,7 +151,8 @@ package com.graphics.asset
 			this.o = {w:ai.width, 
 					  h:ai.height, 
 					  c:ai.color, 
-					  a:ai.alpha, 
+					  a:ai.alpha,
+					  va:ai.vectorAlpha,
 					  bt:ai.borderThickness, 
 					  bc:ai.borderColor, 
 					  custom:ai.customShapeSettings, 
@@ -1129,7 +1130,6 @@ package com.graphics.asset
 		public function get mc():MovieClip
 		{
 			var _mc:MovieClip;
-			
 			try
 			{
 				if(GetSwf(refMc.getChildAt(0)))
